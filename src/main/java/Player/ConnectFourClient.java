@@ -74,10 +74,14 @@ public class ConnectFourClient {
             for(int k = 0; k < board[i].length; k++){
                 //System.out.println("k is " + k);
                 final int m = k;
-                board[i][k] = new Square();
+                board[i][k] = new Square(i,k);
                 board[i][k].addMouseListener(new MouseAdapter() {
                     public void mousePressed(MouseEvent e) {
+                        
+                        
                         currentSquare = board[z][m];
+                        
+                        
                         
                        
                         //when this button is pressed this message is sent to the server
@@ -88,6 +92,15 @@ public class ConnectFourClient {
         }
         System.out.println("Done initializing board");
         frame.getContentPane().add(boardPanel, "Center");
+    }
+    
+    public void printBoard(){
+        for(int i = 0; i < board.length; i++){
+            for(int j = 0; j < board[i].length; j++){
+                System.out.print(board[i][j].toString() + " ");
+            }
+            System.out.println();
+        }
     }
 
     /**
@@ -117,19 +130,25 @@ public class ConnectFourClient {
                 response = in.readLine();
                 if (response.startsWith("VALID_MOVE")) {
                     messageLabel.setText("Valid move, please wait");
-                    currentSquare.setIcon(icon);
-                    currentSquare.repaint();
+                    
+                    updateBoard(currentSquare);
+                    printBoard();
+                    
                 } else if (response.startsWith("OPPONENT_MOVED")) {
                     System.out.println("My opponent moved");
                     String coords = response.substring(15);
                     System.out.println("Coords is " + coords);
                     int row = Integer.parseInt(coords.split(":")[0]);
                     int col = Integer.parseInt(coords.split(":")[1]);
-                    System.out.println("Row is " + row);
-                    System.out.println("Col is " + col);
+                    System.out.println("opponent Row is " + row);
+                    System.out.println("opponent Col is " + col);
                     board[row][col].setIcon(opponentIcon);
                     board[row][col].repaint();
                     messageLabel.setText("Opponent moved, your turn");
+                    
+                    //updateBoard()
+                    printBoard();
+                    
                 } else if (response.startsWith("VICTORY")) {
                     messageLabel.setText("You win");
                     break;
@@ -149,6 +168,32 @@ public class ConnectFourClient {
             socket.close();
         }
     }
+    
+    private int getLowestAvailableRow(int row, int col){
+        int lowestRow = board.length-1;
+      
+        for(int i = board.length-1; i > -1; i--){
+            System.out.println("if board[" + i + "][" + col + "].toString (result: " + board[i][col].toString() + ") equals _ ? " + board[i][col].toString().equals('_'));
+            if(board[i][col].toString().equals("_")){
+                //lowestRow = i;
+                System.out.println("Returning early from loop");
+                return i;
+            }
+        }
+        return lowestRow; //i think this is the problem and the above isnt working
+    }
+    
+    private void updateBoard(Square currentSquare){
+        int rowClicked = currentSquare.row;
+        int colClicked = currentSquare.col;
+
+        int lowestRow = getLowestAvailableRow(rowClicked, colClicked);
+        
+        System.out.println("Updating board at " + lowestRow + " " + colClicked);
+        Square sq = board[lowestRow][colClicked];
+        sq.setIcon(icon);
+        sq.repaint();
+    }
 
     private boolean wantsToPlayAgain() {
         int response = JOptionPane.showConfirmDialog(frame,
@@ -166,14 +211,25 @@ public class ConnectFourClient {
      */
     static class Square extends JPanel {
         JLabel label = new JLabel((Icon)null);
+        int row;
+        int col;
 
-        public Square() {
+        public Square(int row, int col) {
+            this.row = row;
+            this.col = col;
             setBackground(Color.white);
             add(label);
         }
 
         public void setIcon(Icon icon) {
             label.setIcon(icon);
+        }
+        
+        @Override 
+        public String toString(){
+            Icon ic = label.getIcon();
+            
+            return (ic != null) ? "P" : "_";
         }
     }
 
