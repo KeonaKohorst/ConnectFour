@@ -11,12 +11,13 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
+import javax.swing.*;
+//import javax.swing.Icon;
+//import javax.swing.ImageIcon;
+//import javax.swing.JFrame;
+//import javax.swing.JLabel;
+//import javax.swing.JOptionPane;
+//import javax.swing.JPanel;
 
 public class ConnectFourClient {
 
@@ -68,8 +69,10 @@ public class ConnectFourClient {
             @Override
             public void mouseMoved(MouseEvent e) {
                 if (floatingIcon.isVisible()) {
-                    floatingIcon.setLocation(e.getX(), 0);
-                    northPanel.repaint();
+                    SwingUtilities.invokeLater(() -> {
+                        floatingIcon.setLocation(e.getX(), 0);
+                        northPanel.repaint();
+                    });
                 }
             }
         });
@@ -146,6 +149,11 @@ public class ConnectFourClient {
                     messageLabel.setText("You tied");
                     break;
                 } else if (response.startsWith("MESSAGE")) {
+       
+                    if(response.contains("Your move")){
+                        floatingIcon.setIcon(icon);
+                        floatingIcon.setVisible(true);
+                    }
                     messageLabel.setText(response.substring(8));
                 }
             }
