@@ -250,6 +250,16 @@ class Game {
             output.println(
                 hasWinner() ? "DEFEAT" : boardFilledUp() ? "TIE" : "");
         }
+        
+        /**
+         * Tells the client where the opponents mouse is
+         * @param x
+         * @param y 
+         */
+        public void sendOpponentMousePosition(int x, int y) {
+            // Send the opponent's mouse position to the other player
+            opponent.output.println("OPPONENT_MOUSE " + x + ":" + y);
+        }
 
         /**
          * The run method of this thread.
@@ -263,6 +273,8 @@ class Game {
                 if (mark == 'X') {
                     output.println("MESSAGE Your move");
                 }
+                
+               
 
                 // Repeatedly get commands from the client and process them.
                 while (true) {
@@ -286,6 +298,15 @@ class Game {
                         }
                     } else if (command.startsWith("QUIT")) {
                         return;
+                    }else if(command.startsWith("MOUSE_MOVE")){
+                        String coords = command.substring(command.lastIndexOf(" ")+1);
+                        System.out.println("coords of opponent mouse are " + coords);
+                        String[] parts = coords.split(":");
+                        int x = Integer.parseInt(parts[0]);
+                        int y = Integer.parseInt(parts[1]);
+
+                        // Send the mouse position to the other player
+                        sendOpponentMousePosition(x, y);
                     }
                 }
             } catch (IOException e) {

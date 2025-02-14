@@ -26,6 +26,7 @@ public class ConnectFourClient {
     private ImageIcon icon;
     private ImageIcon opponentIcon;
     private JLabel floatingIcon;
+    private JLabel opponentMouseIcon;
 
     private Square[][] board = new Square[6][7];
     private Square currentSquare;
@@ -47,13 +48,17 @@ public class ConnectFourClient {
 
         // Initialize the floating icon
         floatingIcon = new JLabel(icon);
-        floatingIcon.setVisible(true);
+        //floatingIcon.setVisible(true);
+        
+        opponentMouseIcon = new JLabel(opponentIcon);
+        //opponentMouseIcon.setVisible(true);
 
         // North Panel for Floating Icon
         JPanel northPanel = new JPanel();
         northPanel.setBackground(Color.WHITE); // Optional
         northPanel.setPreferredSize(new Dimension(0,50));
         northPanel.add(floatingIcon);
+        northPanel.add(opponentMouseIcon);
         frame.getContentPane().add(northPanel, BorderLayout.NORTH);
 
         // Message Label at the bottom
@@ -72,6 +77,7 @@ public class ConnectFourClient {
                     SwingUtilities.invokeLater(() -> {
                         floatingIcon.setLocation(e.getX(), 0);
                         northPanel.repaint();
+                        sendMousePositionToServer(e.getX(), 0);
                     });
                 }
             }
@@ -97,6 +103,11 @@ public class ConnectFourClient {
         System.out.println("Done initializing board");
         frame.getContentPane().add(boardPanel, BorderLayout.CENTER);
     }
+    
+    private void sendMousePositionToServer(int x, int y) {
+        // Send the mouse position to the server for the opponent to see
+        out.println("MOUSE_MOVE " + x + ":" + y);
+    }
 
     public void printBoard() {
         for (int i = 0; i < board.length; i++) {
@@ -105,6 +116,12 @@ public class ConnectFourClient {
             }
             System.out.println();
         }
+    }
+    
+    private void updateOpponentMousePosition(int x, int y) {
+        opponentMouseIcon.setLocation(x, 0);  // Update the icon's position (adjust y if necessary)
+        opponentMouseIcon.setVisible(true);  // Make sure the icon is visible
+        opponentMouseIcon.getParent().repaint();
     }
 
     public void play() throws Exception {
@@ -115,6 +132,14 @@ public class ConnectFourClient {
                 char mark = response.charAt(8);
                 icon = new ImageIcon(mark == 'X' ? "x.gif" : "o.gif");
                 opponentIcon = new ImageIcon(mark == 'X' ? "o.gif" : "x.gif");
+                
+                floatingIcon.setIcon(icon);
+                opponentMouseIcon.setIcon(opponentIcon);
+                
+                // Initially hide both icons
+                floatingIcon.setVisible(false);
+                opponentMouseIcon.setVisible(false);
+                
                 frame.setTitle("Connect Four - Player " + mark);
             }
             while (true) {
@@ -123,6 +148,8 @@ public class ConnectFourClient {
                     messageLabel.setText("Valid move, please wait");
 
                     floatingIcon.setVisible(false);
+                    opponentMouseIcon.setIcon(opponentIcon);
+                    opponentMouseIcon.setVisible(true);
                     updateBoard(currentSquare);
                     printBoard();
 
@@ -133,12 +160,25 @@ public class ConnectFourClient {
                     board[row][col].setIcon(opponentIcon);
                     board[row][col].repaint();
                     messageLabel.setText("Opponent moved, your turn");
-
+                        
+                   
+                    opponentMouseIcon.setVisible(false);
                     floatingIcon.setIcon(icon);
                     floatingIcon.setVisible(true);
 
                     printBoard();
 
+                } else if (response.startsWith("OPPONENT_MOUSE")){
+                    // Extract the opponent's mouse coordinates
+                    String coords = response.substring(response.lastIndexOf(" ")+1);
+                    String[] parts = coords.split(":");
+                    int x = Integer.parseInt(parts[0]);
+                    int y = Integer.parseInt(parts[1]);
+
+                    // Update the opponent's mouse position
+                    updateOpponentMousePosition(x, y);
+                    System.out.println("Opponent mouse position is: " + coords);
+                    
                 } else if (response.startsWith("VICTORY")) {
                     messageLabel.setText("You win");
                     break;
@@ -153,6 +193,8 @@ public class ConnectFourClient {
                     if(response.contains("Your move")){
                         floatingIcon.setIcon(icon);
                         floatingIcon.setVisible(true);
+                    }else{
+                        floatingIcon.setVisible(false);
                     }
                     messageLabel.setText(response.substring(8));
                 }
