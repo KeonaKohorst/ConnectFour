@@ -153,13 +153,50 @@ class Game {
     public synchronized boolean legalMove(int[] location, Player player) {
         int row = location[0];
         int col = location[1];
-        if (player == currentPlayer && board[row][col] == null) {
-            board[row][col] = currentPlayer;
+        
+        boolean columnHasAnEmpty = false;
+        for(int i = 0; i < board.length; i++){
+            if(board[i][col] == null){
+                columnHasAnEmpty = true;
+                break;
+            } 
+        }
+        
+        if (player == currentPlayer && columnHasAnEmpty) {
+            int lowestRow = getLowestAvailableRow(row, col);
+            board[lowestRow][col] = currentPlayer;
             currentPlayer = currentPlayer.opponent;
-            currentPlayer.otherPlayerMoved(location);
+            printBoard();
+            System.out.println("Setting other player moved: " + lowestRow + " " + col);
+            currentPlayer.otherPlayerMoved(new int[]{lowestRow, col});
             return true;
         }
         return false;
+    }
+    
+    private void printBoard(){
+        for(int i = 0; i < board.length; i++){
+            for(int j = 0; j < board[i].length; j++){
+                if(board[i][j] != null){
+                    System.out.print(board[i][j].toString() + " ");
+                }else{
+                    System.out.print("_ ");
+                }
+            }
+            System.out.println();
+        }
+    }
+    
+    private int getLowestAvailableRow(int row, int col){
+        int lowestRow = board.length-1;
+      
+        for(int i = board.length-1; i > -1; i--){
+            if(board[i][col] == null){
+                //lowestRow = i;
+                return i;
+            }
+        }
+        return lowestRow;
     }
 
     /**
@@ -208,6 +245,7 @@ class Game {
          */
         public void otherPlayerMoved(int[] location) {
             String loc = location[0] + ":" + location[1];
+            System.out.println("Telling Client that The other player moved to " + location[0] + " " + location[1]);
             output.println("OPPONENT_MOVED " + loc);
             output.println(
                 hasWinner() ? "DEFEAT" : boardFilledUp() ? "TIE" : "");
@@ -255,6 +293,11 @@ class Game {
             } finally {
                 try {socket.close();} catch (IOException e) {}
             }
+        }
+        
+        @Override
+        public String toString(){
+            return Character.toString(this.mark);
         }
     }
 }
