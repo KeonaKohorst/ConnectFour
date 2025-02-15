@@ -32,6 +32,10 @@ public class ConnectFourClient {
     private ImageIcon opponentIcon;
     private JLabel floatingIcon;
     private JLabel opponentMouseIcon;
+    ImageIcon floatingIconOpponent;
+    ImageIcon floatingIconPlayer;
+    ImageIcon pinkDarkBG = new ImageIcon("pinkDarkBG.jpg");
+    ImageIcon yellowDarkBG = new ImageIcon("yellowDarkBG.jpg");
 
     private Square[][] board = new Square[6][7];
     private Square currentSquare;
@@ -139,25 +143,38 @@ public class ConnectFourClient {
             response = in.readLine();
             if (response.startsWith("WELCOME")) {
                 char mark = response.charAt(8);
+                String playerColour = (mark == 'X' ? "pink" : "yellow");
+                String oppColour = (mark == 'X' ? "yellow" : "pink");
+                //System.out.println("colour is " + colour);
                 
-                Image ogPink = ImageIO.read(new File("pink.jpg"));
-                Image ogYellow = ImageIO.read(new File("yellow.jpg"));
+//                Image ogPink = ImageIO.read(new File("pink.jpg"));
+//                Image ogYellow = ImageIO.read(new File("yellow.jpg"));
                 int size = 50;
-                Image resizedPink = ogPink.getScaledInstance(size, size, Image.SCALE_SMOOTH);
-                Image resizedYellow = ogYellow.getScaledInstance(size, size, Image.SCALE_SMOOTH);
+//                Image resizedPink = ogPink.getScaledInstance(size, size, Image.SCALE_SMOOTH);
+//                Image resizedYellow = ogYellow.getScaledInstance(size, size, Image.SCALE_SMOOTH);
+                
+//                ImageIcon pink = new ImageIcon("pink.jpg");
+//                ImageIcon yellow = new ImageIcon("yellow.jpg");
                 
                 
-                icon = new ImageIcon(mark == 'X' ? resizedPink : resizedYellow );
-                opponentIcon = new ImageIcon(mark == 'X' ? resizedYellow : resizedPink );
                 
-                floatingIcon.setIcon(icon);
-                opponentMouseIcon.setIcon(opponentIcon);
+                icon = new ImageIcon(playerColour + ".jpg");
+                opponentIcon = new ImageIcon(oppColour +".jpg");
+                floatingIconPlayer = new ImageIcon(playerColour + "darkBG.jpg");
+                floatingIconOpponent = new ImageIcon(oppColour +"yellowDarkBG.jpg");
+                
+                
+//                
+                floatingIcon.setIcon(floatingIconPlayer);
+                opponentMouseIcon.setIcon(floatingIconOpponent);
+//                floatingIcon.setIcon(icon);
+//                opponentMouseIcon.setIcon(opponentIcon);
                 
                 // Initially hide both icons
                 floatingIcon.setVisible(false);
                 opponentMouseIcon.setVisible(false);
                 
-                frame.setTitle("Connect Four - Player " + mark);
+                frame.setTitle("Connect Four - Player " + playerColour);
             }
             while (true) {
                 response = in.readLine();
@@ -269,7 +286,7 @@ public class ConnectFourClient {
             add(label);
             
             try{
-                empty = ImageIO.read(new File("empty.jpg")).getScaledInstance(50, 50, Image.SCALE_SMOOTH);
+                empty = ImageIO.read(new File("empty.jpg"));
             }catch(IOException f){
                 System.out.println(f.getMessage());
             }
@@ -292,7 +309,7 @@ public class ConnectFourClient {
             String serverAddress = (args.length == 0) ? "localhost" : args[0];
             ConnectFourClient client = new ConnectFourClient(serverAddress);
             client.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            client.frame.setBounds(400, 400, 600, 500);
+            client.frame.setBounds(50, 50, 600, 500);
             client.frame.setVisible(true);
             client.frame.setResizable(false);
             client.play();
