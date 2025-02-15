@@ -11,6 +11,11 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
+import java.awt.Image; // For handling images
+import javax.imageio.ImageIO; // For reading and writing image files
+import java.io.*; // For working with file paths
+
+
 import javax.swing.*;
 //import javax.swing.Icon;
 //import javax.swing.ImageIcon;
@@ -27,6 +32,10 @@ public class ConnectFourClient {
     private ImageIcon opponentIcon;
     private JLabel floatingIcon;
     private JLabel opponentMouseIcon;
+    ImageIcon floatingIconOpponent;
+    ImageIcon floatingIconPlayer;
+    //ImageIcon pinkDarkBG = new ImageIcon("pinkDarkBG.jpg");
+    //ImageIcon yellowDarkBG = new ImageIcon("yellowDarkBG.jpg");
 
     private Square[][] board = new Square[6][7];
     private Square currentSquare;
@@ -35,6 +44,8 @@ public class ConnectFourClient {
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
+    private Color bg = new Color(48, 99, 142);
+    private Color northBg = new Color(0, 61, 91);
 
     public ConnectFourClient(String serverAddress) throws Exception {
 
@@ -55,19 +66,20 @@ public class ConnectFourClient {
 
         // North Panel for Floating Icon
         JPanel northPanel = new JPanel();
-        northPanel.setBackground(Color.WHITE); // Optional
+        northPanel.setBackground(northBg); // Optional
         northPanel.setPreferredSize(new Dimension(0,50));
         northPanel.add(floatingIcon);
         northPanel.add(opponentMouseIcon);
         frame.getContentPane().add(northPanel, BorderLayout.NORTH);
 
         // Message Label at the bottom
-        messageLabel.setBackground(Color.lightGray);
+        messageLabel.setBackground(northBg);
         frame.getContentPane().add(messageLabel, BorderLayout.SOUTH);
 
         // Board Panel in the Center
         JPanel boardPanel = new JPanel();
-        boardPanel.setBackground(Color.black);
+        
+        boardPanel.setBackground(bg);
         boardPanel.setLayout(new GridLayout(6, 7, 2, 2));
 
         boardPanel.addMouseMotionListener(new MouseAdapter() {
@@ -92,6 +104,7 @@ public class ConnectFourClient {
                 board[i][k].addMouseListener(new MouseAdapter() {
                     public void mousePressed(MouseEvent e) {
                         currentSquare = board[z][m];
+                        //currentSquare.beenClicked = true;
                         out.println("MOVE " + z + ":" + m);
                         floatingIcon.setVisible(false);
                     }
@@ -130,17 +143,24 @@ public class ConnectFourClient {
             response = in.readLine();
             if (response.startsWith("WELCOME")) {
                 char mark = response.charAt(8);
-                icon = new ImageIcon(mark == 'X' ? "x.gif" : "o.gif");
-                opponentIcon = new ImageIcon(mark == 'X' ? "o.gif" : "x.gif");
-                
-                floatingIcon.setIcon(icon);
-                opponentMouseIcon.setIcon(opponentIcon);
-                
+                String playerColour = (mark == 'X' ? "pink" : "yellow");
+                String oppColour = (mark == 'X' ? "yellow" : "pink");
+
+                icon = new ImageIcon(playerColour + ".jpg");
+                opponentIcon = new ImageIcon(oppColour +".jpg");
+                floatingIconPlayer = new ImageIcon(playerColour + "DarkBG.jpg");
+                floatingIconOpponent = new ImageIcon(oppColour +"DarkBG.jpg");
+
+                floatingIcon.setIcon(floatingIconPlayer);
+                opponentMouseIcon.setIcon(floatingIconOpponent);
+//                floatingIcon.setIcon(icon);                
+//                opponentMouseIcon.setIcon(opponentIcon);
+        
                 // Initially hide both icons
                 floatingIcon.setVisible(false);
                 opponentMouseIcon.setVisible(false);
                 
-                frame.setTitle("Connect Four - Player " + mark);
+                frame.setTitle("Connect Four - Player " + playerColour);
             }
             while (true) {
                 response = in.readLine();
@@ -148,7 +168,7 @@ public class ConnectFourClient {
                     messageLabel.setText("Valid move, please wait");
 
                     floatingIcon.setVisible(false);
-                    opponentMouseIcon.setIcon(opponentIcon);
+                    opponentMouseIcon.setIcon(floatingIconOpponent);
                     opponentMouseIcon.setVisible(true);
                     updateBoard(currentSquare);
                     printBoard();
@@ -158,12 +178,13 @@ public class ConnectFourClient {
                     int row = Integer.parseInt(coords.split(":")[0]);
                     int col = Integer.parseInt(coords.split(":")[1]);
                     board[row][col].setIcon(opponentIcon);
+                    board[row][col].beenClicked = true;
                     board[row][col].repaint();
                     messageLabel.setText("Opponent moved, your turn");
                         
                    
                     opponentMouseIcon.setVisible(false);
-                    floatingIcon.setIcon(icon);
+                    floatingIcon.setIcon(floatingIconPlayer);
                     floatingIcon.setVisible(true);
 
                     printBoard();
@@ -191,7 +212,7 @@ public class ConnectFourClient {
                 } else if (response.startsWith("MESSAGE")) {
        
                     if(response.contains("Your move")){
-                        floatingIcon.setIcon(icon);
+                        floatingIcon.setIcon(floatingIconPlayer);
                         floatingIcon.setVisible(true);
                     }else{
                         floatingIcon.setVisible(false);
@@ -222,6 +243,7 @@ public class ConnectFourClient {
         int lowestRow = getLowestAvailableRow(rowClicked, colClicked);
 
         Square sq = board[lowestRow][colClicked];
+        sq.beenClicked = true;
         sq.setIcon(icon);
         sq.repaint();
     }
@@ -236,15 +258,25 @@ public class ConnectFourClient {
     }
 
     static class Square extends JPanel {
+        Image empty;
+        Color bg = new Color(48, 99, 142);
         JLabel label = new JLabel((Icon) null);
         int row;
         int col;
+        boolean beenClicked = false;
 
         public Square(int row, int col) {
             this.row = row;
             this.col = col;
-            setBackground(Color.white);
+            setBackground(bg);
             add(label);
+            
+            try{
+                empty = ImageIO.read(new File("empty.jpg"));
+            }catch(IOException f){
+                System.out.println(f.getMessage());
+            }
+            label.setIcon(new ImageIcon(empty));
         }
 
         public void setIcon(Icon icon) {
@@ -253,8 +285,8 @@ public class ConnectFourClient {
 
         @Override
         public String toString() {
-            Icon ic = label.getIcon();
-            return (ic != null) ? "P" : "_";
+            //Icon ic = label.getIcon();
+            return (beenClicked) ? "P" : "_";
         }
     }
 
@@ -263,7 +295,7 @@ public class ConnectFourClient {
             String serverAddress = (args.length == 0) ? "localhost" : args[0];
             ConnectFourClient client = new ConnectFourClient(serverAddress);
             client.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            client.frame.setBounds(400, 400, 600, 500);
+            client.frame.setBounds(50, 50, 600, 500);
             client.frame.setVisible(true);
             client.frame.setResizable(false);
             client.play();
