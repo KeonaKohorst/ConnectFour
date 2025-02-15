@@ -17,16 +17,10 @@ import java.io.*; // For working with file paths
 
 
 import javax.swing.*;
-//import javax.swing.Icon;
-//import javax.swing.ImageIcon;
-//import javax.swing.JFrame;
-//import javax.swing.JLabel;
-//import javax.swing.JOptionPane;
-//import javax.swing.JPanel;
 
 public class ConnectFourClient {
 
-    private JFrame frame = new JFrame("Connect Four");
+    private JFrame frame = new JFrame("Connect 4");
     private JLabel messageLabel = new JLabel("");
     private ImageIcon icon;
     private ImageIcon opponentIcon;
@@ -52,13 +46,16 @@ public class ConnectFourClient {
     private int targetY = 0;
     private int currentX = 0;
     private int currentY = 0;
-    private static final double INTERPOLATION_FACTOR = 0.1; // Adjust for smoother/faster interpolation
+    private static final double INTERPOLATION_FACTOR = 0.2; // Adjust for smoother/faster interpolation
     
     //Stuff for tracking player mouse position
     private int playerTargetX = 0;
     private int playerCurrentX = 0;
-    private static final double PLAYER_INTERPOLATION_FACTOR = 0.1; // Adjust for smoother/faster interpolation
-    private static final int DEADZONE_THRESHOLD = 2; // Minimum movement required to update the target
+    private static final double PLAYER_INTERPOLATION_FACTOR = 0.2; // Adjust for smoother/faster interpolation
+    private long lastMouseMoveTime = System.currentTimeMillis(); // Track the last time the mouse moved
+    private static final long MOUSE_STILL_THRESHOLD = 500; // 0.5 second threshold
+    private Timer mouseStillTimer; // Timer to check for mouse stillness
+    private boolean interpolationEnabled = true;
 
     public ConnectFourClient(String serverAddress) throws Exception {
 
@@ -102,6 +99,8 @@ public class ConnectFourClient {
             public void mouseMoved(MouseEvent e) {
                 if (floatingIcon.isVisible()) {
                     playerTargetX = e.getX(); // Update the target position
+                    lastMouseMoveTime = System.currentTimeMillis(); // Reset the stillness timer
+                    interpolationEnabled = true; // Re-enable interpolation
                     sendMousePositionToServer(playerTargetX, 0); // Send the target position to the server
                 }
             }
@@ -127,10 +126,33 @@ public class ConnectFourClient {
             }
         }
         System.out.println("Done initializing board");
-        frame.getContentPane().add(boardPanel, BorderLayout.CENTER);
+        
+        // Create a panel for the logo
+        JPanel logoPanel = new JPanel();
+        logoPanel.setBackground(Color.WHITE); // Set background color for the logo panel
+        ImageIcon logoIcon = new ImageIcon("connect4logo.png"); // Load the logo image
+        JLabel logoLabel = new JLabel(logoIcon);
+        logoPanel.add(logoLabel);
+
+        // Create a vertical stack panel to hold the logo and the main content
+        JPanel verticalStackPanel = new JPanel();
+        verticalStackPanel.setLayout(new BoxLayout(verticalStackPanel, BoxLayout.PAGE_AXIS));
+
+        // Add the logo panel and the main content to the vertical stack panel
+        verticalStackPanel.add(logoPanel);
+        verticalStackPanel.add(northPanel, BorderLayout.NORTH);
+        verticalStackPanel.add(boardPanel, BorderLayout.CENTER);
+
+        // Add the vertical stack panel to the frame
+        frame.getContentPane().add(verticalStackPanel, BorderLayout.CENTER);
+        
+        //frame.getContentPane().add(boardPanel, BorderLayout.CENTER);
+        
+        
         
         startInterpolation();
         startPlayerInterpolation();
+        startMouseStillTimer(); 
     }
     
     private void sendMousePositionToServer(int x, int y) {
@@ -147,13 +169,27 @@ public class ConnectFourClient {
         }
     }
     
+    private void startMouseStillTimer() {
+        mouseStillTimer = new Timer(100, e -> {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastMouseMoveTime > MOUSE_STILL_THRESHOLD) {
+                // If the mouse has been still for more than the threshold, disable interpolation
+                interpolationEnabled = false;
+            } else {
+                // If the mouse is moving, re-enable interpolation
+                interpolationEnabled = true;
+            }
+        });
+        mouseStillTimer.start();
+    }
+    
     private void updateOpponentMousePosition(int x, int y) {
         targetX = x;
         targetY = y;
     }
 
     private void startInterpolation() {
-        Timer timer = new Timer(10, e -> {
+        Timer timer = new Timer(5, e -> {
             currentX += (targetX - currentX) * INTERPOLATION_FACTOR;
             currentY += (targetY - currentY) * INTERPOLATION_FACTOR;
             opponentMouseIcon.setLocation(currentX, currentY);
@@ -163,9 +199,14 @@ public class ConnectFourClient {
     }
     
     private void startPlayerInterpolation() {
-        Timer playerTimer = new Timer(10, e -> {
-            // Interpolate the player's icon position
-            playerCurrentX += (playerTargetX - playerCurrentX) * PLAYER_INTERPOLATION_FACTOR;
+        Timer playerTimer = new Timer(5, e -> {
+            if (interpolationEnabled) {
+                // Interpolate the player's icon position
+                playerCurrentX += (playerTargetX - playerCurrentX) * PLAYER_INTERPOLATION_FACTOR;
+            } else {
+                // Snap to the target position when interpolation is disabled
+                playerCurrentX = playerTargetX;
+            }
             floatingIcon.setLocation(playerCurrentX, 0);
             floatingIcon.getParent().repaint(); // Repaint only the necessary area
         });
@@ -188,14 +229,12 @@ public class ConnectFourClient {
 
                 floatingIcon.setIcon(floatingIconPlayer);
                 opponentMouseIcon.setIcon(floatingIconOpponent);
-//                floatingIcon.setIcon(icon);                
-//                opponentMouseIcon.setIcon(opponentIcon);
         
                 // Initially hide both icons
                 floatingIcon.setVisible(false);
                 opponentMouseIcon.setVisible(false);
                 
-                frame.setTitle("Connect Four - Player " + playerColour);
+                frame.setTitle("Connect 4 - Player " + playerColour);
             }
             while (true) {
                 response = in.readLine();
@@ -238,10 +277,10 @@ public class ConnectFourClient {
                     System.out.println("Opponent mouse position is: " + coords);
                     
                 } else if (response.startsWith("VICTORY")) {
-                    messageLabel.setText("You win");
+                    messageLabel.setText("You win!");
                     break;
                 } else if (response.startsWith("DEFEAT")) {
-                    messageLabel.setText("You lose");
+                    messageLabel.setText("You'll get 'em next time!");
                     break;
                 } else if (response.startsWith("TIE")) {
                     messageLabel.setText("You tied");
@@ -287,8 +326,8 @@ public class ConnectFourClient {
 
     private boolean wantsToPlayAgain() {
         int response = JOptionPane.showConfirmDialog(frame,
-                "Want to play again?",
-                "Connect Four is Fun Fun Fun",
+                "Up to another round?",
+                "Connect 4",
                 JOptionPane.YES_NO_OPTION);
         frame.dispose();
         return response == JOptionPane.YES_OPTION;
@@ -332,7 +371,7 @@ public class ConnectFourClient {
             String serverAddress = (args.length == 0) ? "localhost" : args[0];
             ConnectFourClient client = new ConnectFourClient(serverAddress);
             client.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            client.frame.setBounds(50, 50, 600, 500);
+            client.frame.setBounds(50, 50, 600, 600);
             client.frame.setVisible(true);
             client.frame.setResizable(false);
             client.play();
