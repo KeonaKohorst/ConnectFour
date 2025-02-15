@@ -34,8 +34,6 @@ public class ConnectFourClient {
     private JLabel opponentMouseIcon;
     ImageIcon floatingIconOpponent;
     ImageIcon floatingIconPlayer;
-    //ImageIcon pinkDarkBG = new ImageIcon("pinkDarkBG.jpg");
-    //ImageIcon yellowDarkBG = new ImageIcon("yellowDarkBG.jpg");
 
     private Square[][] board = new Square[6][7];
     private Square currentSquare;
@@ -46,6 +44,21 @@ public class ConnectFourClient {
     private PrintWriter out;
     private Color bg = new Color(48, 99, 142);
     private Color northBg = new Color(0, 61, 91);
+    
+    //Stuff for tracking opponent mouse position
+    private long lastUpdateTime = 0;
+    private static final long UPDATE_INTERVAL = 50; // Update every 50ms
+    private int targetX = 0;
+    private int targetY = 0;
+    private int currentX = 0;
+    private int currentY = 0;
+    private static final double INTERPOLATION_FACTOR = 0.1; // Adjust for smoother/faster interpolation
+    
+    //Stuff for tracking player mouse position
+    private int playerTargetX = 0;
+    private int playerCurrentX = 0;
+    private static final double PLAYER_INTERPOLATION_FACTOR = 0.1; // Adjust for smoother/faster interpolation
+    private static final int DEADZONE_THRESHOLD = 2; // Minimum movement required to update the target
 
     public ConnectFourClient(String serverAddress) throws Exception {
 
@@ -55,6 +68,8 @@ public class ConnectFourClient {
         out = new PrintWriter(socket.getOutputStream(), true);
 
         // Use BorderLayout for the frame
+       
+        ((JComponent) frame.getContentPane()).setDoubleBuffered(true);
         frame.setLayout(new BorderLayout());
 
         // Initialize the floating icon
@@ -71,7 +86,7 @@ public class ConnectFourClient {
         northPanel.add(floatingIcon);
         northPanel.add(opponentMouseIcon);
         frame.getContentPane().add(northPanel, BorderLayout.NORTH);
-
+        
         // Message Label at the bottom
         messageLabel.setBackground(northBg);
         frame.getContentPane().add(messageLabel, BorderLayout.SOUTH);
@@ -86,14 +101,12 @@ public class ConnectFourClient {
             @Override
             public void mouseMoved(MouseEvent e) {
                 if (floatingIcon.isVisible()) {
-                    SwingUtilities.invokeLater(() -> {
-                        floatingIcon.setLocation(e.getX(), 0);
-                        northPanel.repaint();
-                        sendMousePositionToServer(e.getX(), 0);
-                    });
+                    playerTargetX = e.getX(); // Update the target position
+                    sendMousePositionToServer(playerTargetX, 0); // Send the target position to the server
                 }
             }
         });
+
 
         System.out.println("initializing board");
         for (int i = 0; i < board.length; i++) {
@@ -115,6 +128,9 @@ public class ConnectFourClient {
         }
         System.out.println("Done initializing board");
         frame.getContentPane().add(boardPanel, BorderLayout.CENTER);
+        
+        startInterpolation();
+        startPlayerInterpolation();
     }
     
     private void sendMousePositionToServer(int x, int y) {
@@ -132,11 +148,30 @@ public class ConnectFourClient {
     }
     
     private void updateOpponentMousePosition(int x, int y) {
-        opponentMouseIcon.setLocation(x, 0);  // Update the icon's position (adjust y if necessary)
-        opponentMouseIcon.setVisible(true);  // Make sure the icon is visible
-        opponentMouseIcon.getParent().repaint();
+        targetX = x;
+        targetY = y;
     }
 
+    private void startInterpolation() {
+        Timer timer = new Timer(10, e -> {
+            currentX += (targetX - currentX) * INTERPOLATION_FACTOR;
+            currentY += (targetY - currentY) * INTERPOLATION_FACTOR;
+            opponentMouseIcon.setLocation(currentX, currentY);
+            opponentMouseIcon.getParent().repaint();
+        });
+        timer.start();
+    }
+    
+    private void startPlayerInterpolation() {
+        Timer playerTimer = new Timer(10, e -> {
+            // Interpolate the player's icon position
+            playerCurrentX += (playerTargetX - playerCurrentX) * PLAYER_INTERPOLATION_FACTOR;
+            floatingIcon.setLocation(playerCurrentX, 0);
+            floatingIcon.getParent().repaint(); // Repaint only the necessary area
+        });
+        playerTimer.start();
+    }
+    
     public void play() throws Exception {
         String response;
         try {
@@ -197,6 +232,8 @@ public class ConnectFourClient {
                     int y = Integer.parseInt(parts[1]);
 
                     // Update the opponent's mouse position
+                    opponentMouseIcon.setIcon(floatingIconOpponent);
+                    opponentMouseIcon.setVisible(true);
                     updateOpponentMousePosition(x, y);
                     System.out.println("Opponent mouse position is: " + coords);
                     
