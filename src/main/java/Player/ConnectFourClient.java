@@ -34,8 +34,8 @@ public class ConnectFourClient {
     private JLabel opponentMouseIcon;
     ImageIcon floatingIconOpponent;
     ImageIcon floatingIconPlayer;
-    ImageIcon pinkDarkBG = new ImageIcon("pinkDarkBG.jpg");
-    ImageIcon yellowDarkBG = new ImageIcon("yellowDarkBG.jpg");
+    //ImageIcon pinkDarkBG = new ImageIcon("pinkDarkBG.jpg");
+    //ImageIcon yellowDarkBG = new ImageIcon("yellowDarkBG.jpg");
 
     private Square[][] board = new Square[6][7];
     private Square currentSquare;
@@ -145,31 +145,17 @@ public class ConnectFourClient {
                 char mark = response.charAt(8);
                 String playerColour = (mark == 'X' ? "pink" : "yellow");
                 String oppColour = (mark == 'X' ? "yellow" : "pink");
-                //System.out.println("colour is " + colour);
-                
-//                Image ogPink = ImageIO.read(new File("pink.jpg"));
-//                Image ogYellow = ImageIO.read(new File("yellow.jpg"));
-                int size = 50;
-//                Image resizedPink = ogPink.getScaledInstance(size, size, Image.SCALE_SMOOTH);
-//                Image resizedYellow = ogYellow.getScaledInstance(size, size, Image.SCALE_SMOOTH);
-                
-//                ImageIcon pink = new ImageIcon("pink.jpg");
-//                ImageIcon yellow = new ImageIcon("yellow.jpg");
-                
-                
-                
+
                 icon = new ImageIcon(playerColour + ".jpg");
                 opponentIcon = new ImageIcon(oppColour +".jpg");
-                floatingIconPlayer = new ImageIcon(playerColour + "darkBG.jpg");
-                floatingIconOpponent = new ImageIcon(oppColour +"yellowDarkBG.jpg");
-                
-                
-//                
+                floatingIconPlayer = new ImageIcon(playerColour + "DarkBG.jpg");
+                floatingIconOpponent = new ImageIcon(oppColour +"DarkBG.jpg");
+
                 floatingIcon.setIcon(floatingIconPlayer);
                 opponentMouseIcon.setIcon(floatingIconOpponent);
-//                floatingIcon.setIcon(icon);
+//                floatingIcon.setIcon(icon);                
 //                opponentMouseIcon.setIcon(opponentIcon);
-                
+        
                 // Initially hide both icons
                 floatingIcon.setVisible(false);
                 opponentMouseIcon.setVisible(false);
@@ -182,7 +168,7 @@ public class ConnectFourClient {
                     messageLabel.setText("Valid move, please wait");
 
                     floatingIcon.setVisible(false);
-                    opponentMouseIcon.setIcon(opponentIcon);
+                    opponentMouseIcon.setIcon(floatingIconOpponent);
                     opponentMouseIcon.setVisible(true);
                     updateBoard(currentSquare);
                     printBoard();
@@ -198,7 +184,7 @@ public class ConnectFourClient {
                         
                    
                     opponentMouseIcon.setVisible(false);
-                    floatingIcon.setIcon(icon);
+                    floatingIcon.setIcon(floatingIconPlayer);
                     floatingIcon.setVisible(true);
 
                     printBoard();
@@ -226,7 +212,7 @@ public class ConnectFourClient {
                 } else if (response.startsWith("MESSAGE")) {
        
                     if(response.contains("Your move")){
-                        floatingIcon.setIcon(icon);
+                        floatingIcon.setIcon(floatingIconPlayer);
                         floatingIcon.setVisible(true);
                     }else{
                         floatingIcon.setVisible(false);
