@@ -1,32 +1,12 @@
-package C4Server;
+package Server;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
-
-/**
- * The strings that are sent in TTTP (Tic Tac Toe Protocol are:
- *
- *  Client -> Server           Server -> Client
- *  ----------------           ----------------
- *  MOVE <n>  (0 <= n <= 8)    WELCOME <char>  (char in {X, O})
- *  QUIT                       VALID_MOVE
- *                             OTHER_PLAYER_MOVED <n>
- *                             VICTORY
- *                             DEFEAT
- *                             TIE
- *                             MESSAGE <text>
- *
- * It allows an unlimited number of pairs of players to play.
- */
+import java.io.*;
+import java.net.*;
 
 public class ConnectFourServer {
 
     /**
-     * Runs the application. Pairs up clients that connect.
+     * Main method which runs the program and accepts clients as players
      */
     public static void main(String[] args) throws Exception {
         ServerSocket listener = new ServerSocket(8901);
@@ -34,13 +14,13 @@ public class ConnectFourServer {
         try {
             while (true) {
                 Game game = new Game();
-                Game.Player playerX = game.new Player(listener.accept(), 'X');
-                Game.Player playerO = game.new Player(listener.accept(), 'O');
-                playerX.setOpponent(playerO);
-                playerO.setOpponent(playerX);
-                game.currentPlayer = playerX;
-                playerX.start();
-                playerO.start();
+                Game.Player player1 = game.new Player(listener.accept(), 'P');
+                Game.Player player2 = game.new Player(listener.accept(), 'Y');
+                player1.setOpponent(player2);
+                player2.setOpponent(player1);
+                game.currentPlayer = player1;
+                player1.start();
+                player2.start();
             }
         } finally {
             listener.close();
@@ -49,33 +29,20 @@ public class ConnectFourServer {
 }
 
 /**
- * A two-player game.
+ * Class which represents the two player connect 4 game
  */
 class Game {
-
-    /**
-     * A board has nine squares.  Each square is either unowned or
-     * it is owned by a player.  So we use a simple array of player
-     * references.  If null, the corresponding square is unowned,
-     * otherwise the array cell stores a reference to the player that
-     * owns it.
-     */
     private Player[][] board = new Player[6][7];
-
-    /**
-     * The current player.
-     */
     Player currentPlayer;
-
+    
     /**
-     * Returns whether the current state of the board is such that one
-     * of the players is a winner.
+     * Checks if anyone has won the game after each player movement
+     * @return boolean for whether a player has won
      */
     public boolean hasWinner() {
-  
         // Check horizontal
         for (int row = 0; row < 6; row++) {
-            for (int col = 0; col < 4; col++) { // Only need to check up to col 3
+            for (int col = 0; col < 4; col++) { 
                 if (board[row][col] != null &&
                     board[row][col] == board[row][col+1] &&
                     board[row][col] == board[row][col+2] &&
@@ -86,7 +53,7 @@ class Game {
         }
 
         // Check vertical
-        for (int row = 0; row < 3; row++) { // Only need to check up to row 2
+        for (int row = 0; row < 3; row++) { 
             for (int col = 0; col < 7; col++) {
                 if (board[row][col] != null &&
                     board[row][col] == board[row+1][col] &&
@@ -122,33 +89,12 @@ class Game {
         }
 
         return false;
-        
-
     }
 
     /**
-     * Returns whether there are no more empty squares.
-     */
-    public boolean boardFilledUp() {
-        for (int i = 0; i < board.length; i++) {
-            for(int j = 0; j < board[i].length; j++){
-                if (board[i][j] == null) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Called by the player threads when a player tries to make a
-     * move.  This method checks to see if the move is legal: that
-     * is, the player requesting the move must be the current player
-     * and the square in which she is trying to move must not already
-     * be occupied.  If the move is legal the game state is updated
-     * (the square is set and the next player becomes current) and
-     * the other player is notified of the move so it can update its
-     * client.
+     * Check if the move is being done by the player whose turn it is and if the spot
+     * on the board isn't already taken up.
+     * If legal, notify opponent and update board.
      */
     public synchronized boolean legalMove(int[] location, Player player) {
         int row = location[0];
@@ -174,6 +120,9 @@ class Game {
         return false;
     }
     
+    /**
+     * Used for debugging, prints the internal board to the console to show state of board on server
+     */
     private void printBoard(){
         for(int i = 0; i < board.length; i++){
             for(int j = 0; j < board[i].length; j++){
@@ -187,6 +136,27 @@ class Game {
         }
     }
     
+    /**
+     * If the board has no more empty squares this returns true, else false
+     */
+    public boolean boardFilledUp() {
+        for (int i = 0; i < board.length; i++) {
+            for(int j = 0; j < board[i].length; j++){
+                if (board[i][j] == null) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Gets the lowest available row (highest index) for a chip.
+     * This is the "gravity" of connect 4
+     * @param row
+     * @param col
+     * @return the index of the row 
+     */
     private int getLowestAvailableRow(int row, int col){
         int lowestRow = board.length-1;
       
@@ -200,24 +170,17 @@ class Game {
     }
 
     /**
-     * The class for the helper threads in this multithreaded server
-     * application.  A Player is identified by a character mark
-     * which is either 'X' or 'O'.  For communication with the
-     * client the player has a socket with its input and output
-     * streams.  Since only text is being communicated we use a
-     * reader and a writer.
+     * Class representing a player. It extends Thread to allow multi-threading for the game.
      */
     class Player extends Thread {
+        BufferedReader input;
+        PrintWriter output;
         char mark;
         Player opponent;
         Socket socket;
-        BufferedReader input;
-        PrintWriter output;
 
         /**
-         * Constructs a handler thread for a given socket and mark
-         * initializes the stream fields, displays the first two
-         * welcoming messages.
+         * Gets input and output streams for the player socket
          */
         public Player(Socket socket, char mark) {
             this.socket = socket;
@@ -227,21 +190,22 @@ class Game {
                     new InputStreamReader(socket.getInputStream()));
                 output = new PrintWriter(socket.getOutputStream(), true);
                 output.println("WELCOME " + mark);
-                output.println("MESSAGE Waiting for opponent to connect");
+                output.println("MESSAGE Hold on while we find you an opponent!");
             } catch (IOException e) {
-                System.out.println("Player died: " + e);
+                System.out.println("Player exited application: " + e);
             }
         }
 
         /**
-         * Accepts notification of who the opponent is.
+         * Sets who the players opponent is
          */
         public void setOpponent(Player opponent) {
             this.opponent = opponent;
         }
 
         /**
-         * Handles the otherPlayerMoved message.
+         * When we are told the other player moved, we tell the opponent player where
+         * Also tell if anyone won after this move
          */
         public void otherPlayerMoved(int[] location) {
             String loc = location[0] + ":" + location[1];
@@ -262,21 +226,18 @@ class Game {
         }
 
         /**
-         * The run method of this thread.
+         * Holds the logic which executes when the thread runs
          */
         public void run() {
             try {
-                // The thread is only started after everyone connects.
-                output.println("MESSAGE All players connected");
+                //wait for all players to be connected
+                output.println("MESSAGE All Players Ready for Battle");
 
-                // Tell the first player that it is her turn.
-                if (mark == 'X') {
+                if (mark == 'P') {
                     output.println("MESSAGE Your move");
                 }
                 
-               
-
-                // Repeatedly get commands from the client and process them.
+                // while the game is running, communicate with the client
                 while (true) {
                     String command = input.readLine();
                     if (command.startsWith("MOVE")) {
@@ -285,19 +246,19 @@ class Game {
                         int row = Integer.parseInt(strCoords.split(":")[0]);
                         int col = Integer.parseInt(strCoords.split(":")[1]);
                         int coords[] = {row, col};
-                        
-                        
-                        
+                       
                         if (legalMove(coords, this)) {
                             output.println("VALID_MOVE");
                             output.println(hasWinner() ? "VICTORY"
                                          : boardFilledUp() ? "TIE"
                                          : "");
                         } else {
-                            output.println("MESSAGE ?");
+                            output.println("MESSAGE Wait Your Turn!");
                         }
+                        
                     } else if (command.startsWith("QUIT")) {
                         return;
+                        
                     }else if(command.startsWith("MOUSE_MOVE")){
                         String coords = command.substring(command.lastIndexOf(" ")+1);
                         System.out.println("coords of opponent mouse are " + coords);
@@ -310,7 +271,12 @@ class Game {
                     }
                 }
             } catch (IOException e) {
-                System.out.println("Player died: " + e);
+                System.out.println("Player disconnected: " + e);
+                
+                //send message to opponent that player disconnted
+                opponent.output.println("DISCONNECT Your opponent disconnected.");
+                try {socket.close();} catch (IOException ioe) {}
+                
             } finally {
                 try {socket.close();} catch (IOException e) {}
             }
