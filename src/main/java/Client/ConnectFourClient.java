@@ -1,21 +1,11 @@
-package Player;
+package Client;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.GridLayout;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.Dimension;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.awt.*;
+import java.io.*;
+import java.awt.event.*;
 import java.net.Socket;
-
-import java.awt.Image; // For handling images
-import javax.imageio.ImageIO; // For reading and writing image files
-import java.io.*; // For working with file paths
-
-
+import java.awt.Image; 
+import javax.imageio.ImageIO; 
 import javax.swing.*;
 
 public class ConnectFourClient {
@@ -28,10 +18,9 @@ public class ConnectFourClient {
     private JLabel opponentMouseIcon;
     ImageIcon floatingIconOpponent;
     ImageIcon floatingIconPlayer;
-
     private Square[][] board = new Square[6][7];
     private Square currentSquare;
-    
+
     private static int PORT = 8901;
     private Socket socket;
     private BufferedReader in;
@@ -56,27 +45,31 @@ public class ConnectFourClient {
     private static final long MOUSE_STILL_THRESHOLD = 500; // 0.5 second threshold
     private Timer mouseStillTimer; // Timer to check for mouse stillness
     private boolean interpolationEnabled = true;
+    
+    //Stuff for play again or quit 
+    private final JButton playAgainButton = new JButton("Play Again");
+    private final JButton quitButton = new JButton("Quit");
+    private boolean playAgain = false;
+    private boolean decisionMade = false;
+    JPanel messagePanel = new JPanel(new BorderLayout());
+    private final Object lock = new Object(); //shared object to synchronize main method and client 
 
     public ConnectFourClient(String serverAddress) throws Exception {
 
-        // Setup networking
+        // creating a socket on the specified port with the address of the server
         socket = new Socket(serverAddress, PORT);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new PrintWriter(socket.getOutputStream(), true);
 
-        // Use BorderLayout for the frame
-       
+        // creating the GUI
         ((JComponent) frame.getContentPane()).setDoubleBuffered(true);
         frame.setLayout(new BorderLayout());
 
-        // Initialize the floating icon
+        // Initialize the floating icons which track player mouse movement
         floatingIcon = new JLabel(icon);
-        //floatingIcon.setVisible(true);
-        
         opponentMouseIcon = new JLabel(opponentIcon);
-        //opponentMouseIcon.setVisible(true);
 
-        // North Panel for Floating Icon
+        // North Panel for Floating Icons
         JPanel northPanel = new JPanel();
         northPanel.setBackground(northBg); // Optional
         northPanel.setPreferredSize(new Dimension(0,50));
@@ -84,16 +77,114 @@ public class ConnectFourClient {
         northPanel.add(opponentMouseIcon);
         frame.getContentPane().add(northPanel, BorderLayout.NORTH);
         
-        // Message Label at the bottom
+        // Message label between the logo and north panel
         messageLabel.setBackground(northBg);
-        frame.getContentPane().add(messageLabel, BorderLayout.SOUTH);
-
-        // Board Panel in the Center
-        JPanel boardPanel = new JPanel();
+        messageLabel.setOpaque(true);
+        messageLabel.setForeground(Color.WHITE);
+        messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        //messageLabel.setPreferredSize(new Dimension(frame.getWidth(), 50)); // Adjust height if needed
+        messageLabel.setFont(new Font("BerlinSansFB", Font.BOLD, 20));
         
+        //section for the play again button when the game ends
+        playAgainButton.setVisible(false); //only show when the game ends
+        playAgainButton.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e){
+                synchronized(lock){
+                    playAgain = true;
+                    decisionMade = true;
+                    lock.notify();
+                    frame.dispose();
+                    System.out.println("Play again button pressed, playAgain bool is now " + playAgain);
+                }
+            }
+        });
+        
+        quitButton.setVisible(false);
+        quitButton.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e){
+                synchronized(lock){
+                    playAgain = false;
+                    decisionMade = true;
+                    lock.notify();
+                    frame.dispose();
+                    System.out.println("Player is quitting");
+                }
+            }
+        });
+        
+        //JPanel for the buttons
+        JPanel buttonPanel = new JPanel(new GridBagLayout());
+        buttonPanel.setBackground(northBg);
+
+        // Style the Quit Button
+        quitButton.setText("Quit");
+        quitButton.setForeground(Color.WHITE);
+        quitButton.setFont(new Font("Arial", Font.BOLD, 16));
+        quitButton.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // Add padding
+        quitButton.setFocusPainted(false); 
+        quitButton.setContentAreaFilled(false);
+        quitButton.setOpaque(true); 
+        quitButton.setBackground(Color.decode("#ef476f"));
+        //add hover effect
+        quitButton.addMouseListener(new MouseAdapter(){
+            public void mouseEntered(MouseEvent e){
+                quitButton.setBackground(Color.decode("#bf3253"));
+            }
+            
+            public void mouseExited(MouseEvent e){
+                quitButton.setBackground(Color.decode("#ef476f"));
+            }
+        });
+
+        // Style the Play Again Button
+        playAgainButton.setText("Play Again");
+        playAgainButton.setForeground(Color.WHITE);
+        playAgainButton.setFont(new Font("Arial", Font.BOLD, 16));
+        playAgainButton.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // Add padding
+        playAgainButton.setFocusPainted(false); 
+        playAgainButton.setContentAreaFilled(false);
+        playAgainButton.setOpaque(true); 
+        playAgainButton.setBackground(Color.decode("#06d6a0"));
+        //add hover effect
+        playAgainButton.addMouseListener(new MouseAdapter(){
+            public void mouseEntered(MouseEvent e){
+                playAgainButton.setBackground(Color.decode("#038a67"));
+            }
+            
+            public void mouseExited(MouseEvent e){
+                playAgainButton.setBackground(Color.decode("#06d6a0"));
+            }
+        });
+
+        // Create constraints for the quit button
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0; // 1st column
+        gbc.gridy = 0; // 1st row
+        gbc.weightx = 0.5; // to the left
+        gbc.anchor = GridBagConstraints.CENTER; // align within cell
+        buttonPanel.add(quitButton, gbc);
+
+        // Create constraints for the play again button
+        gbc.gridx = 1; // 2nd column (same row)
+        gbc.weightx = 0.5; // to the right
+        gbc.anchor = GridBagConstraints.CENTER; // align within cell
+        buttonPanel.add(playAgainButton, gbc);
+
+        
+        //need JPanel so whole width of background behind label is blue
+        messagePanel.add(messageLabel, BorderLayout.CENTER);
+        messagePanel.add(buttonPanel, BorderLayout.SOUTH);
+        messagePanel.setBackground(northBg);
+        messagePanel.setPreferredSize(new Dimension(frame.getWidth(), 50));
+
+        // board Panel in the Center
+        JPanel boardPanel = new JPanel();
         boardPanel.setBackground(bg);
         boardPanel.setLayout(new GridLayout(6, 7, 2, 2));
 
+        //track mouse movements by adding a motion listener to the board panel
         boardPanel.addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
@@ -106,7 +197,7 @@ public class ConnectFourClient {
             }
         });
 
-
+        //initialize the board GUI
         System.out.println("initializing board");
         for (int i = 0; i < board.length; i++) {
             final int z = i;
@@ -129,38 +220,55 @@ public class ConnectFourClient {
         
         // Create a panel for the logo
         JPanel logoPanel = new JPanel();
-        logoPanel.setBackground(Color.WHITE); // Set background color for the logo panel
-        ImageIcon logoIcon = new ImageIcon("connect4logo.png"); // Load the logo image
+        logoPanel.setBackground(northBg); // background color for the logo panel
+        ImageIcon logoIcon = new ImageIcon("connect4logo.png"); 
         JLabel logoLabel = new JLabel(logoIcon);
         logoPanel.add(logoLabel);
 
-        // Create a vertical stack panel to hold the logo and the main content
+        // vertical stack panel to hold the logo and the main content
         JPanel verticalStackPanel = new JPanel();
         verticalStackPanel.setLayout(new BoxLayout(verticalStackPanel, BoxLayout.PAGE_AXIS));
 
-        // Add the logo panel and the main content to the vertical stack panel
+        // add logo panel and the main content to the vertical stack panel
         verticalStackPanel.add(logoPanel);
+        verticalStackPanel.add(messagePanel);
         verticalStackPanel.add(northPanel, BorderLayout.NORTH);
         verticalStackPanel.add(boardPanel, BorderLayout.CENTER);
 
-        // Add the vertical stack panel to the frame
+        // add the vertical stack panel to the frame
         frame.getContentPane().add(verticalStackPanel, BorderLayout.CENTER);
-        
-        //frame.getContentPane().add(boardPanel, BorderLayout.CENTER);
-        
-        
         
         startInterpolation();
         startPlayerInterpolation();
         startMouseStillTimer(); 
     }
     
+    /**
+     * Tells the main method whether or not the user has decided if they are gonna quit or play again.
+     * Synchronized so main method blocks.
+     * @return boolean
+     */
+    public synchronized boolean hasDecided(){
+        return decisionMade;
+    }
+    
+    /**
+     * Tells the main method whether or not the user is going to play again.
+     * Synchronized so main method blocks.
+     * @return boolean
+     */
+    public synchronized boolean wantsToPlayAgain(){
+        return playAgain;
+    }
+    
     private void sendMousePositionToServer(int x, int y) {
         // Send the mouse position to the server for the opponent to see
+        // This will allow the opponent to see the floating icon moving when the player moves their mouse
         out.println("MOUSE_MOVE " + x + ":" + y);
     }
 
     public void printBoard() {
+        //for debugging, printing board to console to see internal structure
         for (int i = 0; i < board.length; i++) {
             for (int j = 0; j < board[i].length; j++) {
                 System.out.print(board[i][j].toString() + " ");
@@ -170,13 +278,15 @@ public class ConnectFourClient {
     }
     
     private void startMouseStillTimer() {
+        //timer to check how long a players mouse has been still, the idea is that interpolation should stop
+        //so we dont send too much to the server
         mouseStillTimer = new Timer(100, e -> {
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastMouseMoveTime > MOUSE_STILL_THRESHOLD) {
-                // If the mouse has been still for more than the threshold, disable interpolation
+                // if the mouse has been still for more than the threshold, disable interpolation
                 interpolationEnabled = false;
             } else {
-                // If the mouse is moving, re-enable interpolation
+                // if the mouse is moving, re-enable interpolation
                 interpolationEnabled = true;
             }
         });
@@ -188,6 +298,10 @@ public class ConnectFourClient {
         targetY = y;
     }
 
+    /**
+     * Helps with smoother animation and ensuring we don't send too much info to the server regarding mouse
+     * position
+     */
     private void startInterpolation() {
         Timer timer = new Timer(5, e -> {
             currentX += (targetX - currentX) * INTERPOLATION_FACTOR;
@@ -198,6 +312,9 @@ public class ConnectFourClient {
         timer.start();
     }
     
+    /**
+     * For the other player
+     */
     private void startPlayerInterpolation() {
         Timer playerTimer = new Timer(5, e -> {
             if (interpolationEnabled) {
@@ -213,14 +330,18 @@ public class ConnectFourClient {
         playerTimer.start();
     }
     
+    /**
+     * Contains the logic which is used while the game is running
+     * Handles messages from/to the server
+    */
     public void play() throws Exception {
         String response;
         try {
             response = in.readLine();
             if (response.startsWith("WELCOME")) {
                 char mark = response.charAt(8);
-                String playerColour = (mark == 'X' ? "pink" : "yellow");
-                String oppColour = (mark == 'X' ? "yellow" : "pink");
+                String playerColour = (mark == 'P' ? "pink" : "yellow");
+                String oppColour = (mark == 'P' ? "yellow" : "pink");
 
                 icon = new ImageIcon(playerColour + ".jpg");
                 opponentIcon = new ImageIcon(oppColour +".jpg");
@@ -239,7 +360,7 @@ public class ConnectFourClient {
             while (true) {
                 response = in.readLine();
                 if (response.startsWith("VALID_MOVE")) {
-                    messageLabel.setText("Valid move, please wait");
+                    messageLabel.setText("Opponent's Turn");
 
                     floatingIcon.setVisible(false);
                     opponentMouseIcon.setIcon(floatingIconOpponent);
@@ -254,7 +375,7 @@ public class ConnectFourClient {
                     board[row][col].setIcon(opponentIcon);
                     board[row][col].beenClicked = true;
                     board[row][col].repaint();
-                    messageLabel.setText("Opponent moved, your turn");
+                    messageLabel.setText("Your Turn");
                         
                    
                     opponentMouseIcon.setVisible(false);
@@ -278,12 +399,15 @@ public class ConnectFourClient {
                     
                 } else if (response.startsWith("VICTORY")) {
                     messageLabel.setText("You win!");
+                    showPlayAgainPanel();
                     break;
                 } else if (response.startsWith("DEFEAT")) {
                     messageLabel.setText("You'll get 'em next time!");
+                    showPlayAgainPanel();
                     break;
                 } else if (response.startsWith("TIE")) {
-                    messageLabel.setText("You tied");
+                    messageLabel.setText("You tied!");
+                    showPlayAgainPanel();
                     break;
                 } else if (response.startsWith("MESSAGE")) {
        
@@ -294,6 +418,10 @@ public class ConnectFourClient {
                         floatingIcon.setVisible(false);
                     }
                     messageLabel.setText(response.substring(8));
+                } else if (response.startsWith("DISCONNECT")){
+                    messageLabel.setText(response.substring(11));
+                    showPlayAgainPanel();
+                    break;
                 }
             }
             out.println("QUIT");
@@ -301,7 +429,29 @@ public class ConnectFourClient {
             socket.close();
         }
     }
+    
+    /**
+     * When game ends show the button which allows a user to play again
+     */
+    private void showPlayAgainPanel(){
+        //hide the floating icons
+        floatingIcon.setVisible(false);
+        opponentMouseIcon.setVisible(false);
+        
+        //show the buttons to quit or play again
+        playAgainButton.setVisible(true);
+        quitButton.setVisible(true);
+        messagePanel.revalidate();
+        messagePanel.repaint();
+    }
 
+    /**
+     * Finds the lowest row in the board which a chip can be placed in, 
+     * this helps with the "gravity" logic of connect 4
+     * @param row
+     * @param col
+     * @return index of the lowest row (highest index without a chip already in it) 
+     */
     private int getLowestAvailableRow(int row, int col) {
         int lowestRow = board.length - 1;
         for (int i = board.length - 1; i > -1; i--) {
@@ -312,6 +462,10 @@ public class ConnectFourClient {
         return lowestRow;
     }
 
+    /**
+     * When a player makes a move, this updates the board with the new move
+     * @param currentSquare 
+     */
     private void updateBoard(Square currentSquare) {
         int rowClicked = currentSquare.row;
         int colClicked = currentSquare.col;
@@ -324,15 +478,7 @@ public class ConnectFourClient {
         sq.repaint();
     }
 
-    private boolean wantsToPlayAgain() {
-        int response = JOptionPane.showConfirmDialog(frame,
-                "Up to another round?",
-                "Connect 4",
-                JOptionPane.YES_NO_OPTION);
-        frame.dispose();
-        return response == JOptionPane.YES_OPTION;
-    }
-
+    //this class represents a square on the board
     static class Square extends JPanel {
         Image empty;
         Color bg = new Color(48, 99, 142);
@@ -366,18 +512,37 @@ public class ConnectFourClient {
         }
     }
 
+    //runs the program
     public static void main(String[] args) throws Exception {
         while (true) {
             String serverAddress = (args.length == 0) ? "localhost" : args[0];
             ConnectFourClient client = new ConnectFourClient(serverAddress);
             client.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            client.frame.setBounds(50, 50, 600, 600);
+            client.frame.setBounds(50, 50, 600, 660);
             client.frame.setVisible(true);
             client.frame.setResizable(false);
             client.play();
-            if (!client.wantsToPlayAgain()) {
+//            if (!client.wantsToPlayAgain()) {
+//                break;
+//            }
+
+            synchronized(client.lock){
+                while(!client.hasDecided()){
+                    client.lock.wait();
+                    System.out.println("Client has decided whether to play again? " + client.hasDecided());
+                } 
+            }
+            
+            if(!client.wantsToPlayAgain()){
+                System.out.println("Client wants to play again? " + client.wantsToPlayAgain());
                 break;
             }
+            
+            //reset flags for next game
+            client.playAgain = false;
+            client.decisionMade = false;
         }
+        System.out.println("The game session has ended by choice of player.");
+        System.exit(0);
     }
 }
