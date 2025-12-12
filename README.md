@@ -35,14 +35,19 @@ Key Components:
 - Turn and status display  
 - Error + move feedback  
 
-Game Loads:
+---
+
+# Pictures
+## Game Loads:
 ![image](https://github.com/user-attachments/assets/8cdea0e3-3ef1-4cea-95b1-bee492893a52)
 
-Players begin playing:
+## Players begin playing:
 ![image](https://github.com/user-attachments/assets/7e8daa5b-acee-45d2-862a-cd8b7405820b)
 
-Player wins:
+## Player wins:
 ![image](https://github.com/user-attachments/assets/a0b725ab-923f-4455-b41e-3677beeb3294)
+
+---
 
 ## Communication Protocol
 
@@ -63,8 +68,8 @@ Player wins:
 | VICTORY                   | Player has won                              |
 | DEFEAT                    | Opponent has won                            |
 | TIE                       | Board is full                               |
-| OPPONENT_MOVED <col>      | Opponent placed a piece                     |
-| OPPONENT_CURSOR <col>     | Opponent hovered over a column              |
+| OPPONENT_MOVED            | Opponent placed a piece                     |
+| OPPONENT_CURSOR           | Opponent hovered over a column              |
 | OPPONENT_LEFT             | Opponent disconnected                       |
 
 
