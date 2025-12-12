@@ -55,9 +55,9 @@ Key Components:
 
 | Command            | Description                                   |
 |--------------------|-----------------------------------------------|
-| MOVE <col>         | Attempts to place a piece in the column        |
-| MOUSE_MOVE <col>   | Sends hover position to the opponent           |
-| QUIT               | Client exits the game                          |
+| MOVE(col)              | Attempts to place a piece in the column        |
+| MOUSE_MOVE(col)        | Sends hover position to the opponent           |
+| QUIT              | Client exits the game                          |
 
 ### Server → Client
 
@@ -68,8 +68,8 @@ Key Components:
 | VICTORY                   | Player has won                              |
 | DEFEAT                    | Opponent has won                            |
 | TIE                       | Board is full                               |
-| OPPONENT_MOVED            | Opponent placed a piece                     |
-| OPPONENT_CURSOR           | Opponent hovered over a column              |
+| OPPONENT_MOVED(col)            | Opponent placed a piece                     |
+| OPPONENT_CURSOR(col)           | Opponent hovered over a column              |
 | OPPONENT_LEFT             | Opponent disconnected                       |
 
 
